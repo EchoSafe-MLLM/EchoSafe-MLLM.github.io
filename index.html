@@ -1,0 +1,1344 @@
+<html lang="en-GB">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EchoSafe: Evolving Contextual Safety in MLLMs via Inference-Time Self-Reflective Memory</title>
+    <meta name="description" content="EchoSafe is a training-free framework that maintains a self-reflective memory bank to accumulate and retrieve safety insights from prior interactions, enabling contextual safety in Multi-Modal Large Language Models.">
+    <meta name="referrer" content="no-referrer-when-downgrade">
+    <meta name="robots" content="all">
+    <meta content="en_EN" property="og:locale">
+    <meta content="website" property="og:type">
+    <meta content="EchoSafe" property="og:title">
+    <meta content="Evolving Contextual Safety in MLLMs via Inference-Time Self-Reflective Memory" property="og:description">
+
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:description" content="EchoSafe: Evolving Contextual Safety in MLLMs via Inference-Time Self-Reflective Memory">
+
+    <link rel="stylesheet" type="text/css" media="all" href="assets/stylesheets/main_free.css" />
+    <link rel="stylesheet" type="text/css" media="all" href="clarity/clarity.css" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.18.1/styles/foundation.min.css">
+    <link href="assets/fontawesome-free-6.6.0-web/css/all.min.css" rel="stylesheet">
+    <style>
+        .container.blog p.text,
+        .container.blog p.abstract,
+        .container.blog ol li p.text,
+        .container.blog ul li p.text { text-align: justify; }
+        .container.blog ul,
+        .container.blog ol { list-style-position: inside; }
+        .container.blog ul li p.text,
+        .container.blog ol li p.text { display: inline; }
+
+        .results-table { border-collapse: collapse; width: 100%; font-size: 55%; }
+        .results-table th, .results-table td { text-align: center; padding: 3px 5px; white-space: nowrap; }
+        .results-table thead tr:first-child th:first-child, .results-table tbody td:first-child { text-align: left; padding-left: 10px; min-width: 140px; }
+        .results-table .top-border { border-top: 2px solid #333; }
+        .results-table .mid-border td { border-top: 1px solid #bbb; }
+        .results-table .bot-border td { border-bottom: 2px solid #333; }
+        .results-table .sec-header td { background: #dbeafe; font-style: italic; font-weight: 500; padding: 4px 10px; }
+        .results-table .hm-cell { background: #eef2ff; }
+        .results-table tr.gray-row td { color: #000; }
+        .results-table .sub-row th { border-top: 1px solid #ddd; border-bottom: 1px solid #ddd; font-weight: normal; color: #000; }
+        .results-table thead tr:first-child th { border-bottom: 1px solid #aaa; }
+        .results-table .model-group-cell { border-right: 1px solid #ccc; writing-mode: vertical-lr; transform: rotate(180deg); text-align: center; font-size: 79%; white-space: nowrap; padding: 6px 3px; min-width: 22px; }
+        .results-table tr.echo-row td { background: #dbeafe; }
+        .results-table tr.echo-row td.hm-cell { background: #93c5fd; }
+    </style>
+    <script src="assets/scripts/navbar.js"></script>  <!-- Comment to remove table of content. -->
+    <script type="text/x-mathjax-config">
+        MathJax.Hub.Config({
+            "HTML-CSS": {
+              scale: 95,
+              fonts: ["Gyre-Pagella"],
+              imageFont: null,
+              undefinedFamily: "'Arial Unicode MS', cmbright"
+            },
+            tex2jax: {
+                inlineMath: [ ['$','$'], ["\\(","\\)"] ],
+                processEscapes: true
+              }
+          });
+    </script>
+    <script type="text/javascript"
+    src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML">
+    </script>
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+</head>
+
+<body>
+    <!-- Title / Hero Section -->
+    <div class="container blog" id="first-content" style="background: linear-gradient(90deg, #93c5fd 0%, #e0e7ff 50%, #93c5fd 100%);">
+        <div class="blog-title no-cover">
+            <div class="blog-intro">
+                <div>
+                    <h1 class="title"><strong>EchoSafe:</strong> Evolving Contextual Safety in Multi-Modal Large Language Models via Inference-Time Self-Reflective Memory</h1>
+                    <p class="author">
+                        Ce Zhang<sup>*</sup>, Jinxi He<sup>*</sup>, Junyi He, Katia P. Sycara, Yaqi Xie
+                    </p>
+                    <p class="author" style="padding-top: 0px;">
+                        Robotics Institute, Carnegie Mellon University
+                    </p>
+                    <p class="author" style="padding-top: 0px; font-size: 0.85em;">
+                        <sup>*</sup> Equal contribution
+                    </p>
+                    <p class="abstract">
+                        We tackle <strong><em>contextual safety</em></strong> in MLLMs — the ability to distinguish subtly different scenarios
+                        that diverge in safety intent. We introduce <strong>MM-SafetyBench++</strong>, a benchmark pairing
+                        each unsafe sample with a minimally-edited safe counterpart for fine-grained contextual evaluation,
+                        and <strong>EchoSafe</strong>, a training-free framework that accumulates safety insights in a
+                        self-reflective memory bank and retrieves them at inference time to enable context-aware, continually
+                        evolving safety reasoning.
+                    </p>
+
+                    <div class="info">
+                        <div>
+                            <!-- TO DO: replace the paper link with the real Arxiv page link -->
+                            <a href="https://arxiv.org" class="button icon" style="background-color: rgba(255, 255, 255, 0.2)">Paper <i class="fa-solid fa-book-open"></i></a> &nbsp;&nbsp;
+                            <a href="https://github.com/EchoSafe-MLLM/EchoSafe" class="button icon" style="background-color: rgba(255, 255, 255, 0.2)">Code <i class="fa-solid fa-code"></i></a> &nbsp;&nbsp;
+                            <a href="https://huggingface.co/datasets/EchoSafe-MLLM/MM-SafetyBench-plus-plus" class="button icon" style="background-color: rgba(255, 255, 255, 0.2)">Dataset <i class="fa-solid fa-database"></i></a>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="info">
+                    <p>CVPR 2026</p>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+
+    <div class="container blog main first" id="blog-main">
+        <h1>Abstract</h1>
+        <p class="text">
+            Multi-modal Large Language Models (MLLMs) have achieved remarkable performance across a wide range of visual
+            reasoning tasks, yet their vulnerability to safety risks remains a pressing concern. While prior research
+            primarily focuses on jailbreak defenses that detect and refuse explicitly unsafe inputs, such approaches often
+            overlook <strong>contextual safety</strong>, which requires models to distinguish subtle contextual differences
+            between scenarios that may appear similar but diverge significantly in safety intent.
+        </p>
+        <p class="text">
+            In this work, we present <strong>MM-SafetyBench++</strong>, a carefully curated benchmark designed for
+            contextual safety evaluation. Specifically, for each unsafe image–text pair, we construct a corresponding
+            safe counterpart through minimal modifications that flip the user intent while preserving the underlying
+            contextual meaning, enabling controlled evaluation of whether models can adapt their safety behaviors based
+            on contextual understanding.
+        </p>
+        <p class="text">
+            Further, we introduce <strong>EchoSafe</strong>, a training-free framework that maintains a
+            <strong>self-reflective memory bank</strong> to accumulate and retrieve safety insights from prior
+            interactions. By integrating relevant past experiences into current prompts, EchoSafe enables context-aware
+            reasoning and continual evolution of safety behavior during inference. Extensive experiments on various
+            multi-modal safety benchmarks demonstrate that EchoSafe consistently achieves superior performance,
+            establishing a strong baseline for advancing contextual safety in MLLMs. 
+        </p>
+        <p class="text">
+            All benchmark data and code are
+            available at <a href="https://EchoSafe-mllm.github.io">EchoSafe-mllm.github.io</a>.
+        </p>
+    </div>
+
+    <div class="container blog max gray" style="padding: 2vh 12vw;">
+        <div style="display: flex; gap: 24px; align-items: center;">
+            <img src="assets/figures/overview1.png" style="flex: 1; width: 0; height: auto;">
+            <img src="assets/figures/overview2.png" style="flex: 1; width: 0; height: auto;">
+        </div>
+        <p class="caption" style="font-size: 90%;">
+            <strong>Overview.</strong> <em>(Left)</em> Qualitative comparison of generated
+            responses: prior methods often exhibit over-defensive behavior (e.g., refusing a benign medication transport
+            query), whereas EchoSafe produces contextually appropriate responses by leveraging self-reflective memory.
+            <em>(Right)</em> Quantitative comparison on MM-SafetyBench++: EchoSafe consistently outperforms prior methods
+            on both <strong>Contextual Correctness Rate (CCR)</strong> and <strong>Quality Score (QS)</strong> across all
+            safety-sensitive categories.
+        </p>
+    </div>
+
+
+    <div class="container blog main">
+        <h1>MM-SafetyBench++</h1>
+        <p class="text">Existing multi-modal safety benchmarks suffer from three key limitations:</p>
+        <ul>
+            <li><p class="text">They focus solely on refusal behavior and inadvertently reward over-defensive models.</p></li>
+            <li><p class="text">They contain low-fidelity or trivially solvable samples, with recent defenses already achieving near-zero attack success rate on MM-SafetyBench.</p></li>
+            <li><p class="text">They rely on coarse binary metrics (e.g., attack success rate) that fail to capture contextual safety awareness.</strong>.</p></li>
+        </ul>
+        <p class="text">
+            MM-SafetyBench++ addresses these limitations by providing:
+        </p>
+        <ul>
+            <li><p class="text">High-fidelity image–text pairs covering diverse safety-sensitive scenarios.</p></li>
+            <li><p class="text">Carefully balanced safe–unsafe sample pairs with minimal contextual edits that flip intent while preserving semantics.</p></li>
+            <li><p class="text">Fine-grained reasoning-aware metrics: <strong>Contextual Correctness Rate (CCR)</strong> and <strong>Response Quality Score (QS)</strong>.</p></li>
+        </ul>
+    </div>
+
+
+    <div class="container blog extra-large gray">
+        <style>
+            .bm-carousel { overflow: hidden; position: relative; padding: 8px 0 4px; cursor: grab; user-select: none; }
+            .bm-carousel:active { cursor: grabbing; }
+            .bm-track { display: flex; align-items: center; transition: transform 0.45s cubic-bezier(0.25, 0.46, 0.45, 0.94); }
+            .bm-slide { flex: 0 0 60%; transition: opacity 0.4s ease; opacity: 0.45; cursor: pointer; padding: 0 10px; }
+            .bm-slide.active { opacity: 1; cursor: default; }
+            .bm-slide img { width: 100%; display: block; border-radius: 0px; }
+        </style>
+
+        <div class="bm-carousel" id="bmCarousel">
+            <div class="bm-track" id="bmTrack">
+                <div class="bm-slide active"><img src="assets/figures/benchmark_exp_s1.jpg"></div><!-- Scenario 1: Illegal Activity -->
+                <div class="bm-slide"><img src="assets/figures/benchmark_exp_s2.jpg"></div><!-- Scenario 2: Placeholder -->
+                <div class="bm-slide"><img src="assets/figures/benchmark_exp_s3.jpg"></div><!-- Scenario 3: Placeholder -->
+                <div class="bm-slide"><img src="assets/figures/benchmark_exp_s4.jpg"></div><!-- Scenario 4: Placeholder -->
+                <div class="bm-slide"><img src="assets/figures/benchmark_exp_s5.jpg"></div><!-- Scenario 5: Placeholder -->
+                <div class="bm-slide"><img src="assets/figures/benchmark_exp_s6.jpg"></div><!-- Scenario 6: Placeholder -->
+            </div>
+            <div class="slide-menu">
+                <ul class="dots" id="bmDots">
+                    <li class="dot active" data-index="0"></li>
+                    <li class="dot" data-index="1"></li>
+                    <li class="dot" data-index="2"></li>
+                    <li class="dot" data-index="3"></li>
+                    <li class="dot" data-index="4"></li>
+                    <li class="dot" data-index="5"></li>
+                </ul>
+            </div>
+        </div>
+
+        <p class="caption" style="font-size: 90%;">
+            <strong>MM-SafetyBench++ Scenario Examples.</strong> Each scenario includes a paired unsafe and safe sample.
+            The safe counterpart is constructed via subtle modifications that flip the user's intent while preserving the
+            underlying visual and textual context. Click the dots or drag to explore scenarios.
+        </p>
+
+        <script>
+        (function () {
+            const carousel = document.getElementById('bmCarousel');
+            const track    = document.getElementById('bmTrack');
+            const slides   = Array.from(track.querySelectorAll('.bm-slide'));
+            const dots     = Array.from(document.getElementById('bmDots').querySelectorAll('.dot'));
+            let current = 0;
+
+            function goTo(index) {
+                current = Math.max(0, Math.min(slides.length - 1, index));
+                const wrapperW = carousel.offsetWidth;
+                const slideW   = slides[0].offsetWidth;          // 75% of wrapperW
+                const gap      = (wrapperW - slideW) / 2;        // centres the active slide
+                track.style.transform = `translateX(${gap - current * (slideW + wrapperW * 0.03)}px)`;
+                slides.forEach((s, i) => s.classList.toggle('active', i === current));
+                dots.forEach((d, i)   => d.classList.toggle('active', i === current));
+            }
+
+            dots.forEach(d => d.addEventListener('click', () => goTo(+d.dataset.index)));
+            slides.forEach((s, i) => s.addEventListener('click', () => { if (i !== current) goTo(i); }));
+            window.addEventListener('resize', () => goTo(current));
+
+            // Drag / swipe
+            let startX = 0, dragging = false;
+            track.addEventListener('mousedown',  e => { dragging = true; startX = e.clientX; track.style.transition = 'none'; });
+            track.addEventListener('mousemove',  e => { if (!dragging) return; e.preventDefault(); });
+            track.addEventListener('mouseup',    e => { if (!dragging) return; dragging = false; track.style.transition = ''; const dx = e.clientX - startX; if (Math.abs(dx) > 40) goTo(current + (dx < 0 ? 1 : -1)); else goTo(current); });
+            track.addEventListener('mouseleave', e => { if (!dragging) return; dragging = false; track.style.transition = ''; goTo(current); });
+            track.addEventListener('touchstart', e => { startX = e.touches[0].clientX; }, { passive: true });
+            track.addEventListener('touchend',   e => { const dx = e.changedTouches[0].clientX - startX; if (Math.abs(dx) > 40) goTo(current + (dx < 0 ? 1 : -1)); });
+
+            goTo(0);
+        })();
+        </script>
+    </div>
+
+
+    <div class="container blog main">
+        <h1>EchoSafe</h1>
+        <p class="text">
+            EchoSafe is a training-free framework that equips any MLLM with a growing <strong>self-reflective memory bank</strong>.
+            Inspired by how humans form abstract schemas from prior experiences to interpret novel but structurally similar
+            situations, EchoSafe accumulates and reuses contextual safety knowledge over time:
+        </p>
+        <ul>
+            <li>
+                <p class="text">
+                    <strong>Memory Accumulation:</strong> After each inference, EchoSafe stores a structured safety insight
+                    — capturing the contextual semantics and the inferred safety judgment — into the memory bank.
+                </p>
+            </li>
+            <li>
+                <p class="text">
+                    <strong>Memory Retrieval:</strong> For a new input, EchoSafe retrieves the most relevant past
+                    experiences via semantic similarity search.
+                </p>
+            </li>
+            <li>
+                <p class="text">
+                    <strong>Context-Aware Reasoning:</strong> Retrieved insights are integrated into the model's prompt,
+                    enabling the MLLM to reason about the current query in light of relevant prior safety experiences.
+                </p>
+            </li>
+        </ul>
+        <p class="text">
+            This process requires no model fine-tuning and operates entirely at inference time, making EchoSafe broadly
+            applicable across diverse MLLM architectures.
+        </p>
+    </div>
+
+    <div class="container blog extra-large gray">
+        <img src="assets/figures/method.png">
+        <p class="caption" style="font-size: 90%;">
+            <strong>EchoSafe Framework.</strong> Overview of the EchoSafe inference-time pipeline: safety insights from
+            prior interactions are accumulated in a self-reflective memory bank, retrieved via semantic similarity, and
+            integrated into the prompt to enable context-aware safety reasoning.
+        </p>
+    </div>
+
+
+    <div class="container blog main">
+        <h1>Results</h1>
+        <p class="text">
+            We integrate EchoSafe into three open-source MLLMs (LLaVA-1.5-7B, LLaVA-NeXT-7B, Qwen-2.5-VL) and compare against FigStep, ECSO, and AdaShield across eight benchmarks. GPT-5-Mini serves as the judge throughout.
+        </p>
+        <h2>MM-SafetyBench++</h2>
+        <p class="text">
+            Existing defenses fall short on the unsafe subset, with refusal rates far below 100%. AdaShield achieves the highest refusal rate but severely degrades safe-sample quality (<em>over-defense</em>). EchoSafe achieves the best overall CCR across all categories — e.g., <strong>87.9% avg. CCR</strong> on Qwen-2.5-VL, outperforming AdaShield by <strong>+16.8%</strong> — while maintaining high response quality on benign inputs.
+        </p>
+    </div>
+
+
+    <div class="container blog extra-large">
+        <div style="overflow-x: auto;">
+            <table class="results-table">
+                <thead>
+                    <tr class="top-border">
+                        <th rowspan="3" style="border-right: 1px solid #ccc; border-bottom: 2px solid #aaa;"><strong>Models</strong></th>
+                        <th colspan="3"><strong>Illegal Activity</strong></th>
+                        <th colspan="3"><strong>Hate Speech</strong></th>
+                        <th colspan="3"><strong>Malware Generation</strong></th>
+                        <th colspan="3"><strong>Physical Harm</strong></th>
+                        <th colspan="3"><strong>Fraud</strong></th>
+                        <th colspan="3"><strong>Sex</strong></th>
+                    </tr>
+                    <tr>
+                        <th>Unsafe</th><th>Safe</th><th>HM</th>
+                        <th>Unsafe</th><th>Safe</th><th>HM</th>
+                        <th>Unsafe</th><th>Safe</th><th>HM</th>
+                        <th>Unsafe</th><th>Safe</th><th>HM</th>
+                        <th>Unsafe</th><th>Safe</th><th>HM</th>
+                        <th>Unsafe</th><th>Safe</th><th>HM</th>
+                    </tr>
+                    <tr class="sub-row">
+                        <th>RR / QS</th><th>AR / QS</th><th class="hm-cell">CCR / QS</th>
+                        <th>RR / QS</th><th>AR / QS</th><th class="hm-cell">CCR / QS</th>
+                        <th>RR / QS</th><th>AR / QS</th><th class="hm-cell">CCR / QS</th>
+                        <th>RR / QS</th><th>AR / QS</th><th class="hm-cell">CCR / QS</th>
+                        <th>RR / QS</th><th>AR / QS</th><th class="hm-cell">CCR / QS</th>
+                        <th>RR / QS</th><th>AR / QS</th><th class="hm-cell">CCR / QS</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <!-- Proprietary Models -->
+                    <tr class="mid-border sec-header"><td colspan="19"><em>Proprietary Models</em></td></tr>
+                    <tr>
+                        <td>GPT-5</td>
+                        <td>85.6 / 4.3</td><td>99.0 / 4.9</td><td class="hm-cell"><u>91.9</u> / <strong>4.6</strong></td>
+                        <td>87.1 / 4.3</td><td>100.0 / 5.0</td><td class="hm-cell"><strong>93.1</strong> / <strong>4.6</strong></td>
+                        <td>79.6 / 3.9</td><td>100.0 / 4.9</td><td class="hm-cell"><strong>88.6</strong> / <strong>4.3</strong></td>
+                        <td>90.3 / 4.5</td><td>100.0 / 5.0</td><td class="hm-cell"><u>94.9</u> / <strong>4.8</strong></td>
+                        <td>75.3 / 3.8</td><td>100.0 / 5.0</td><td class="hm-cell"><u>85.9</u> / <u>4.3</u></td>
+                        <td>43.1 / 2.1</td><td>100.0 / 4.9</td><td class="hm-cell"><strong>60.2</strong> / <strong>3.1</strong></td>
+                    </tr>
+                    <tr>
+                        <td>GPT-5-Mini</td>
+                        <td>85.6 / 4.3</td><td>100.0 / 4.8</td><td class="hm-cell"><strong>92.2</strong> / <u>4.5</u></td>
+                        <td>86.5 / 4.3</td><td>100.0 / 4.8</td><td class="hm-cell"><u>92.7</u> / <u>4.5</u></td>
+                        <td>77.3 / 3.8</td><td>100.0 / 4.8</td><td class="hm-cell"><u>87.2</u> / <strong>4.3</strong></td>
+                        <td>93.1 / 4.6</td><td>100.0 / 4.9</td><td class="hm-cell"><strong>96.4</strong> / <strong>4.8</strong></td>
+                        <td>79.2 / 4.0</td><td>100.0 / 5.0</td><td class="hm-cell"><strong>88.4</strong> / <strong>4.4</strong></td>
+                        <td>34.9 / 1.7</td><td>100.0 / 4.7</td><td class="hm-cell">51.7 / <u>2.5</u></td>
+                    </tr>
+                    <tr>
+                        <td>GPT-4o-Mini</td>
+                        <td>74.2 / 0.8</td><td>85.6 / 3.4</td><td class="hm-cell">79.5 / 1.5</td>
+                        <td>68.1 / 0.9</td><td>87.7 / 3.6</td><td class="hm-cell">76.7 / 1.6</td>
+                        <td>63.6 / 0.8</td><td>95.5 / 3.7</td><td class="hm-cell">76.4 / 1.4</td>
+                        <td>66.7 / 0.8</td><td>85.4 / 3.4</td><td class="hm-cell">74.9 / 1.4</td>
+                        <td>50.0 / 0.6</td><td>96.8 / 3.9</td><td class="hm-cell">65.6 / 1.1</td>
+                        <td>42.2 / 1.2</td><td>83.5 / 3.1</td><td class="hm-cell"><u>55.9</u> / 1.7</td>
+                    </tr>
+                    <tr>
+                        <td>Gemini-2.5-Flash</td>
+                        <td>29.9 / 1.4</td><td>100.0 / 4.8</td><td class="hm-cell">45.9 / 2.2</td>
+                        <td>44.8 / 1.9</td><td>100.0 / 4.8</td><td class="hm-cell">61.9 / 2.7</td>
+                        <td>11.4 / 0.6</td><td>100.0 / 4.8</td><td class="hm-cell">20.4 / 1.1</td>
+                        <td>20.8 / 0.9</td><td>99.3 / 4.8</td><td class="hm-cell">34.5 / 1.6</td>
+                        <td>23.4 / 1.1</td><td>100.0 / 4.9</td><td class="hm-cell">38.0 / 1.8</td>
+                        <td>24.8 / 1.0</td><td>99.1 / 4.6</td><td class="hm-cell">39.7 / 1.7</td>
+                    </tr>
+                    <tr>
+                        <td>Gemini-2.5-Pro</td>
+                        <td>62.9 / 2.9</td><td>96.9 / 4.6</td><td class="hm-cell">76.4 / 3.6</td>
+                        <td>68.2 / 3.0</td><td>96.6 / 4.7</td><td class="hm-cell">79.8 / 3.7</td>
+                        <td>34.1 / 1.5</td><td>100.0 / 4.6</td><td class="hm-cell">50.9 / 2.3</td>
+                        <td>46.5 / 2.2</td><td>98.6 / 4.8</td><td class="hm-cell">63.3 / 3.0</td>
+                        <td>52.6 / 2.5</td><td>100.0 / 4.8</td><td class="hm-cell">68.9 / 3.3</td>
+                        <td>13.8 / 0.6</td><td>98.1 / 4.6</td><td class="hm-cell">24.2 / 1.1</td>
+                    </tr>
+                    <!-- Open-Source Models -->
+                    <tr class="mid-border sec-header"><td colspan="19"><em>Open-Source Models</em></td></tr>
+                    <tr>
+                        <td>LLaVA-1.5-7B</td>
+                        <td>4.1 / 0.2</td><td>100.0 / 3.1</td><td class="hm-cell">7.9 / 0.4</td>
+                        <td>9.2 / 0.4</td><td>99.4 / 3.3</td><td class="hm-cell">16.8 / 0.7</td>
+                        <td>2.3 / 0.1</td><td>100.0 / 3.0</td><td class="hm-cell">4.5 / 0.2</td>
+                        <td>4.2 / 0.2</td><td>100.0 / 3.2</td><td class="hm-cell">8.1 / 0.4</td>
+                        <td>0.0 / 0.0</td><td>100.0 / 3.2</td><td class="hm-cell">0.0 / 0.0</td>
+                        <td>7.3 / 0.3</td><td>100.0 / 3.3</td><td class="hm-cell">13.6 / 0.6</td>
+                    </tr>
+                    <tr>
+                        <td>LLaVA-NeXT-7B</td>
+                        <td>5.1 / 0.3</td><td>100.0 / 3.4</td><td class="hm-cell">9.7 / 0.6</td>
+                        <td>17.2 / 0.7</td><td>100.0 / 3.6</td><td class="hm-cell">29.3 / 1.1</td>
+                        <td>2.3 / 0.0</td><td>100.0 / 3.2</td><td class="hm-cell">4.5 / 0.0</td>
+                        <td>6.2 / 0.3</td><td>100.0 / 3.6</td><td class="hm-cell">11.7 / 0.6</td>
+                        <td>2.6 / 0.1</td><td>100.0 / 3.5</td><td class="hm-cell">5.1 / 0.2</td>
+                        <td>7.3 / 0.3</td><td>99.0 / 3.4</td><td class="hm-cell">13.5 / 0.6</td>
+                    </tr>
+                    <tr>
+                        <td>Qwen2.5-VL-7B</td>
+                        <td>29.9 / 1.3</td><td>100.0 / 3.8</td><td class="hm-cell">45.9 / 2.0</td>
+                        <td>30.7 / 1.3</td><td>100.0 / 4.0</td><td class="hm-cell">47.0 / 2.1</td>
+                        <td>11.4 / 0.6</td><td>100.0 / 3.7</td><td class="hm-cell">20.5 / 1.0</td>
+                        <td>20.1 / 0.9</td><td>100.0 / 3.8</td><td class="hm-cell">33.4 / 1.3</td>
+                        <td>19.5 / 0.9</td><td>100.0 / 3.9</td><td class="hm-cell">32.7 / 1.3</td>
+                        <td>13.8 / 0.6</td><td>99.1 / 3.7</td><td class="hm-cell">24.2 / <u>1.0</u></td>
+                    </tr>
+                    <tr>
+                        <td>Qwen3-VL-8B</td>
+                        <td>80.4 / 3.6</td><td>95.9 / 2.7</td><td class="hm-cell"><strong>87.5</strong> / <strong>3.1</strong></td>
+                        <td>66.9 / 3.0</td><td>99.4 / 2.7</td><td class="hm-cell"><strong>79.8</strong> / <strong>2.8</strong></td>
+                        <td>65.9 / 2.8</td><td>97.8 / 2.7</td><td class="hm-cell"><strong>79.3</strong> / <strong>2.8</strong></td>
+                        <td>63.2 / 2.7</td><td>98.6 / 2.6</td><td class="hm-cell"><strong>77.0</strong> / <strong>2.6</strong></td>
+                        <td>64.9 / 2.9</td><td>100.0 / 2.7</td><td class="hm-cell"><strong>78.7</strong> / <strong>2.8</strong></td>
+                        <td>37.6 / 1.5</td><td>97.3 / 2.8</td><td class="hm-cell"><strong>54.3</strong> / <strong>2.0</strong></td>
+                    </tr>
+                    <tr>
+                        <td>InternVL3.5-8B</td>
+                        <td>46.4 / 1.6</td><td>100.0 / 3.8</td><td class="hm-cell"><u>63.4</u> / <u>2.3</u></td>
+                        <td>38.7 / 1.5</td><td>99.4 / 3.9</td><td class="hm-cell"><u>55.8</u> / <u>2.3</u></td>
+                        <td>25.0 / 0.9</td><td>100.0 / 3.7</td><td class="hm-cell"><u>40.0</u> / <u>1.4</u></td>
+                        <td>32.5 / 1.2</td><td>100.0 / 3.8</td><td class="hm-cell"><u>49.1</u> / <u>1.8</u></td>
+                        <td>29.2 / 0.9</td><td>100.0 / 3.9</td><td class="hm-cell"><u>45.3</u> / <u>1.5</u></td>
+                        <td>14.7 / 0.5</td><td>99.1 / 3.6</td><td class="hm-cell"><u>25.5</u> / <u>1.0</u></td>
+                    </tr>
+                    <!-- Safety Fine-Tuned Models -->
+                    <tr class="mid-border sec-header"><td colspan="19"><em>Safety Fine-Tuned Models</em></td></tr>
+                    <tr class="gray-row">
+                        <td>LLaVA-1.5-7B</td>
+                        <td>4.1 / 0.2</td><td>100.0 / 3.1</td><td class="hm-cell">7.9 / 0.4</td>
+                        <td>9.2 / 0.4</td><td>99.4 / 3.3</td><td class="hm-cell">16.8 / 0.7</td>
+                        <td>2.3 / 0.1</td><td>100.0 / 3.0</td><td class="hm-cell">4.5 / 0.2</td>
+                        <td>4.2 / 0.2</td><td>100.0 / 3.2</td><td class="hm-cell">8.1 / 0.4</td>
+                        <td>0.0 / 0.0</td><td>100.0 / 3.2</td><td class="hm-cell">0.0 / 0.0</td>
+                        <td>7.3 / 0.3</td><td>100.0 / 3.3</td><td class="hm-cell">13.6 / 0.6</td>
+                    </tr>
+                    <tr>
+                        <td>&nbsp;&nbsp;+ Post-hoc LoRA</td>
+                        <td>100.0 / 4.0</td><td>3.1 / 0.1</td><td class="hm-cell">6.0 / 0.2</td>
+                        <td>100.0 / 4.0</td><td>1.8 / 0.1</td><td class="hm-cell">3.5 / 0.2</td>
+                        <td>100.0 / 3.9</td><td>2.3 / 0.0</td><td class="hm-cell">4.5 / 0.1</td>
+                        <td>100.0 / 4.0</td><td>2.8 / 0.1</td><td class="hm-cell">5.5 / 0.2</td>
+                        <td>100.0 / 4.0</td><td>0.0 / 0.0</td><td class="hm-cell">0.0 / 0.0</td>
+                        <td>100.0 / 3.9</td><td>1.8 / 0.1</td><td class="hm-cell">3.5 / 0.2</td>
+                    </tr>
+                    <tr class="bot-border">
+                        <td>&nbsp;&nbsp;+ Mixed LoRA</td>
+                        <td>100.0 / 3.9</td><td>3.1 / 0.1</td><td class="hm-cell">6.0 / 0.2</td>
+                        <td>100.0 / 4.0</td><td>3.1 / 0.1</td><td class="hm-cell">6.0 / 0.2</td>
+                        <td>100.0 / 4.0</td><td>4.6 / 1.0</td><td class="hm-cell">8.8 / 1.8</td>
+                        <td>100.0 / 4.0</td><td>3.5 / 0.1</td><td class="hm-cell">6.8 / 0.2</td>
+                        <td>100.0 / 3.9</td><td>1.3 / 0.0</td><td class="hm-cell">2.6 / 0.1</td>
+                        <td>100.0 / 3.9</td><td>3.7 / 0.1</td><td class="hm-cell">7.1 / 0.2</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+        <p class="caption" style="font-size: 90%;">
+            <strong>Table 1. Evaluation of state-of-the-art MLLMs on MM-SafetyBench++ under the Gen mode.</strong>
+            We report Refusal Rate / Quality Score (RR&nbsp;/&nbsp;QS) for unsafe inputs and Answer Rate / Quality Score
+            (AR&nbsp;/&nbsp;QS) for safe inputs, along with their harmonic mean (HM). Higher (↑) values indicate better
+            performance. All evaluations use <em>gpt-5-mini</em> as the judge. Best results are <strong>bolded</strong>;
+            second-best are <u>underlined</u>. The gray-shaded row in the Safety Fine-Tuned section shows the LLaVA-1.5-7B
+            baseline (no fine-tuning) for reference.
+        </p>
+    </div>
+
+
+    <div class="container blog extra-large">
+        <div style="overflow-x: auto;">
+            <table class="results-table">
+                <thead>
+                    <tr class="top-border">
+                        <th rowspan="3" style="border-right: 1px solid #ccc; border-bottom: 2px solid #aaa;"><strong>Models</strong></th>
+                        <th colspan="3"><strong>Illegal Activity</strong></th>
+                        <th colspan="3"><strong>Hate Speech</strong></th>
+                        <th colspan="3"><strong>Malware Generation</strong></th>
+                        <th colspan="3"><strong>Physical Harm</strong></th>
+                        <th colspan="3"><strong>Fraud</strong></th>
+                        <th colspan="3"><strong>Sex</strong></th>
+                    </tr>
+                    <tr>
+                        <th>Unsafe</th><th>Safe</th><th>HM</th>
+                        <th>Unsafe</th><th>Safe</th><th>HM</th>
+                        <th>Unsafe</th><th>Safe</th><th>HM</th>
+                        <th>Unsafe</th><th>Safe</th><th>HM</th>
+                        <th>Unsafe</th><th>Safe</th><th>HM</th>
+                        <th>Unsafe</th><th>Safe</th><th>HM</th>
+                    </tr>
+                    <tr class="sub-row">
+                        <th>RR / QS</th><th>AR / QS</th><th class="hm-cell">CCR / QS</th>
+                        <th>RR / QS</th><th>AR / QS</th><th class="hm-cell">CCR / QS</th>
+                        <th>RR / QS</th><th>AR / QS</th><th class="hm-cell">CCR / QS</th>
+                        <th>RR / QS</th><th>AR / QS</th><th class="hm-cell">CCR / QS</th>
+                        <th>RR / QS</th><th>AR / QS</th><th class="hm-cell">CCR / QS</th>
+                        <th>RR / QS</th><th>AR / QS</th><th class="hm-cell">CCR / QS</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <!-- Proprietary Models -->
+                    <tr class="mid-border sec-header"><td colspan="19"><em>Proprietary Models</em></td></tr>
+                    <tr>
+                        <td>GPT-5</td>
+                        <td>100.0 / 5.0</td><td>99.0 / 4.9</td><td class="hm-cell"><strong>99.5</strong> / <strong>5.0</strong></td>
+                        <td>97.6 / 4.9</td><td>100.0 / 4.9</td><td class="hm-cell"><strong>99.0</strong> / <strong>4.9</strong></td>
+                        <td>97.7 / 4.9</td><td>100.0 / 4.9</td><td class="hm-cell"><strong>98.9</strong> / <strong>4.9</strong></td>
+                        <td>97.6 / 4.9</td><td>100.0 / 4.9</td><td class="hm-cell"><strong>99.0</strong> / <strong>4.9</strong></td>
+                        <td>100.0 / 4.9</td><td>99.1 / 4.9</td><td class="hm-cell"><strong>99.4</strong> / <strong>4.9</strong></td>
+                        <td>73.4 / 3.6</td><td>100.0 / 4.9</td><td class="hm-cell"><strong>84.6</strong> / <strong>4.2</strong></td>
+                    </tr>
+                    <tr>
+                        <td>GPT-4o-Mini</td>
+                        <td>97.9 / 1.1</td><td>90.7 / 3.7</td><td class="hm-cell">94.1 / 1.7</td>
+                        <td>82.2 / 1.2</td><td>96.3 / 4.1</td><td class="hm-cell">88.7 / 1.9</td>
+                        <td>81.8 / 0.9</td><td>97.7 / 3.8</td><td class="hm-cell">89.0 / 1.5</td>
+                        <td>76.4 / 0.8</td><td>91.0 / 3.7</td><td class="hm-cell">83.1 / 1.3</td>
+                        <td>83.1 / 1.0</td><td>96.8 / 4.0</td><td class="hm-cell">89.4 / 1.6</td>
+                        <td>46.8 / 0.9</td><td>89.9 / 3.4</td><td class="hm-cell">61.6 / 1.4</td>
+                    </tr>
+                    <!-- Open-Source Models -->
+                    <tr class="mid-border sec-header"><td colspan="19"><em>Open-Source Models</em></td></tr>
+                    <tr>
+                        <td>LLaVA-1.5-7B</td>
+                        <td>5.2 / 0.3</td><td>100.0 / 3.1</td><td class="hm-cell">9.9 / 0.6</td>
+                        <td>17.8 / 0.8</td><td>99.4 / 3.4</td><td class="hm-cell">30.1 / 1.2</td>
+                        <td>4.6 / 0.2</td><td>100.0 / 2.8</td><td class="hm-cell">8.8 / 0.4</td>
+                        <td>4.2 / 0.2</td><td>100.0 / 3.1</td><td class="hm-cell">8.0 / 0.4</td>
+                        <td>4.6 / 0.2</td><td>100.0 / 3.1</td><td class="hm-cell">8.8 / 0.4</td>
+                        <td>10.1 / 0.4</td><td>100.0 / 3.1</td><td class="hm-cell">18.4 / 0.7</td>
+                    </tr>
+                    <tr>
+                        <td>LLaVA-NeXT-7B</td>
+                        <td>8.3 / 0.4</td><td>100.0 / 3.4</td><td class="hm-cell">15.3 / 0.7</td>
+                        <td>23.9 / 1.1</td><td>100.0 / 3.8</td><td class="hm-cell">38.6 / 1.7</td>
+                        <td>4.6 / 0.2</td><td>100.0 / 3.1</td><td class="hm-cell">8.8 / 0.4</td>
+                        <td>4.2 / 0.2</td><td>100.0 / 3.5</td><td class="hm-cell">8.0 / 0.4</td>
+                        <td>3.9 / 0.2</td><td>100.0 / 3.6</td><td class="hm-cell">7.5 / 0.4</td>
+                        <td>11.9 / 0.5</td><td>100.0 / 3.4</td><td class="hm-cell">21.4 / 0.9</td>
+                    </tr>
+                    <tr>
+                        <td>Qwen2.5-VL-7B</td>
+                        <td>38.1 / 1.9</td><td>100.0 / 3.8</td><td class="hm-cell">55.2 / 2.5</td>
+                        <td>51.5 / 2.5</td><td>100.0 / 4.0</td><td class="hm-cell">68.0 / 3.1</td>
+                        <td>4.6 / 0.2</td><td>100.0 / 3.0</td><td class="hm-cell">8.8 / 0.4</td>
+                        <td>20.1 / 1.0</td><td>100.0 / 3.9</td><td class="hm-cell">33.5 / 1.6</td>
+                        <td>29.9 / 1.4</td><td>100.0 / 3.8</td><td class="hm-cell">46.0 / 2.0</td>
+                        <td>25.7 / 1.1</td><td>99.1 / 3.5</td><td class="hm-cell">40.8 / 1.7</td>
+                    </tr>
+                    <tr>
+                        <td>Qwen3-VL-8B</td>
+                        <td>96.9 / 4.7</td><td>100.0 / 2.6</td><td class="hm-cell"><u>98.4</u> / <u>3.4</u></td>
+                        <td>87.1 / 4.0</td><td>99.4 / 2.7</td><td class="hm-cell"><u>92.9</u> / <u>3.2</u></td>
+                        <td>86.4 / 4.0</td><td>100.0 / 2.6</td><td class="hm-cell"><u>92.7</u> / <u>3.2</u></td>
+                        <td>79.9 / 3.7</td><td>99.3 / 2.6</td><td class="hm-cell"><u>88.4</u> / <u>3.0</u></td>
+                        <td>95.5 / 4.6</td><td>100.0 / 2.6</td><td class="hm-cell"><u>97.7</u> / <u>3.3</u></td>
+                        <td>47.7 / 2.0</td><td>87.2 / 2.2</td><td class="hm-cell"><u>61.7</u> / <u>2.1</u></td>
+                    </tr>
+                    <tr>
+                        <td>InternVL3.5-8B</td>
+                        <td>76.3 / 2.7</td><td>100.0 / 3.7</td><td class="hm-cell">86.6 / 3.1</td>
+                        <td>66.9 / 2.6</td><td>100.0 / 4.1</td><td class="hm-cell">79.7 / 3.2</td>
+                        <td>34.1 / 1.0</td><td>95.5 / 3.4</td><td class="hm-cell">50.0 / 1.6</td>
+                        <td>45.8 / 1.6</td><td>99.3 / 3.7</td><td class="hm-cell">63.6 / 2.3</td>
+                        <td>60.4 / 2.4</td><td>100.0 / 3.9</td><td class="hm-cell">75.3 / 3.0</td>
+                        <td>21.1 / 0.7</td><td>99.1 / 3.5</td><td class="hm-cell">34.7 / 1.1</td>
+                    </tr>
+                    <!-- Safety Fine-Tuned Models -->
+                    <tr class="mid-border sec-header"><td colspan="19"><em>Safety Fine-Tuned Models</em></td></tr>
+                    <tr class="gray-row">
+                        <td>LLaVA-1.5-7B</td>
+                        <td>5.2 / 0.3</td><td>100.0 / 3.1</td><td class="hm-cell">9.9 / 0.6</td>
+                        <td>17.8 / 0.8</td><td>99.4 / 3.4</td><td class="hm-cell">30.1 / 1.2</td>
+                        <td>4.6 / 0.2</td><td>100.0 / 2.8</td><td class="hm-cell">8.8 / 0.4</td>
+                        <td>4.2 / 0.2</td><td>100.0 / 3.1</td><td class="hm-cell">8.0 / 0.4</td>
+                        <td>4.6 / 0.2</td><td>100.0 / 3.1</td><td class="hm-cell">8.8 / 0.4</td>
+                        <td>10.1 / 0.4</td><td>100.0 / 3.1</td><td class="hm-cell">18.4 / 0.7</td>
+                    </tr>
+                    <tr>
+                        <td>&nbsp;&nbsp;+ Post-hoc LoRA</td>
+                        <td>100.0 / 4.0</td><td>6.2 / 0.2</td><td class="hm-cell">11.7 / 0.4</td>
+                        <td>100.0 / 4.0</td><td>4.3 / 0.1</td><td class="hm-cell">8.3 / 0.2</td>
+                        <td>100.0 / 4.0</td><td>2.3 / 0.1</td><td class="hm-cell">4.5 / 0.2</td>
+                        <td>100.0 / 4.0</td><td>0.0 / 0.0</td><td class="hm-cell">0.0 / 0.0</td>
+                        <td>100.0 / 4.0</td><td>1.3 / 0.0</td><td class="hm-cell">2.6 / 0.0</td>
+                        <td>100.0 / 3.9</td><td>4.6 / 0.2</td><td class="hm-cell">8.8 / 0.4</td>
+                    </tr>
+                    <tr class="bot-border">
+                        <td>&nbsp;&nbsp;+ Mixed LoRA</td>
+                        <td>100.0 / 4.0</td><td>3.1 / 0.1</td><td class="hm-cell">6.0 / 0.2</td>
+                        <td>100.0 / 4.0</td><td>4.3 / 0.1</td><td class="hm-cell">8.3 / 0.2</td>
+                        <td>100.0 / 4.0</td><td>0.0 / 0.0</td><td class="hm-cell">0.0 / 0.0</td>
+                        <td>100.0 / 4.0</td><td>2.1 / 0.1</td><td class="hm-cell">4.1 / 0.2</td>
+                        <td>100.0 / 4.0</td><td>1.3 / 0.0</td><td class="hm-cell">2.6 / 0.0</td>
+                        <td>100.0 / 3.8</td><td>3.7 / 0.1</td><td class="hm-cell">7.1 / 0.2</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+        <p class="caption" style="font-size: 90%;">
+            <strong>Table 2. Evaluation of state-of-the-art MLLMs on MM-SafetyBench++ under the GenOCR mode.</strong>
+            We report Refusal Rate / Quality Score (RR&nbsp;/&nbsp;QS) for unsafe inputs and Answer Rate / Quality Score
+            (AR&nbsp;/&nbsp;QS) for safe inputs, along with their harmonic mean (HM). Higher (↑) values indicate better
+            performance. All evaluations use <em>gpt-5-mini</em> as the judge. The gray-shaded row shows the LLaVA-1.5-7B
+            baseline (no fine-tuning) for reference.
+        </p>
+    </div>
+
+
+        <div class="container blog main">
+        <h2> EchoSafe on MMSafetyBench++</h2>
+        <p class="text">
+            EchoSafe (blue rows) consistently achieves the best CCR and QS across all three base models under both attack modes.
+        </p>
+    </div>
+
+    <!-- Table 3 & 4: EchoSafe defense comparison -->
+    <style>
+        .results-table .model-group-cell {
+            border-right: 1px solid #ccc;
+            writing-mode: vertical-lr;
+            transform: rotate(180deg);
+            text-align: center;
+            font-size: 79%;
+            white-space: nowrap;
+            padding: 6px 3px;
+            min-width: 22px;
+        }
+        .results-table tr.echo-row td { background: #dbeafe; }
+        .results-table tr.echo-row td.hm-cell { background: #93c5fd; }
+    </style>
+
+    <div class="container blog extra-large">
+        <div style="overflow-x: auto;">
+            <table class="results-table">
+                <thead>
+                    <tr class="top-border">
+                        <th colspan="2" rowspan="3" style="border-right: 1px solid #ccc; border-bottom: 2px solid #aaa; text-align: center;"><strong>Method</strong></th>
+                        <th colspan="3"><strong>Illegal Activity</strong></th>
+                        <th colspan="3"><strong>Hate Speech</strong></th>
+                        <th colspan="3"><strong>Malware Generation</strong></th>
+                        <th colspan="3"><strong>Physical Harm</strong></th>
+                        <th colspan="3"><strong>Fraud</strong></th>
+                        <th colspan="3"><strong>Sex</strong></th>
+                    </tr>
+                    <tr>
+                        <th>Unsafe</th><th>Safe</th><th>HM</th>
+                        <th>Unsafe</th><th>Safe</th><th>HM</th>
+                        <th>Unsafe</th><th>Safe</th><th>HM</th>
+                        <th>Unsafe</th><th>Safe</th><th>HM</th>
+                        <th>Unsafe</th><th>Safe</th><th>HM</th>
+                        <th>Unsafe</th><th>Safe</th><th>HM</th>
+                    </tr>
+                    <tr class="sub-row">
+                        <th>RR / QS</th><th>AR / QS</th><th class="hm-cell">CCR / QS</th>
+                        <th>RR / QS</th><th>AR / QS</th><th class="hm-cell">CCR / QS</th>
+                        <th>RR / QS</th><th>AR / QS</th><th class="hm-cell">CCR / QS</th>
+                        <th>RR / QS</th><th>AR / QS</th><th class="hm-cell">CCR / QS</th>
+                        <th>RR / QS</th><th>AR / QS</th><th class="hm-cell">CCR / QS</th>
+                        <th>RR / QS</th><th>AR / QS</th><th class="hm-cell">CCR / QS</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <!-- LLaVA-1.5-7B -->
+                    <tr class="mid-border gray-row">
+                        <td rowspan="5" class="model-group-cell">LLaVA-1.5-7B</td>
+                        <td>Base</td>
+                        <td>4.1 / 0.2</td><td>100.0 / 3.1</td><td class="hm-cell">7.9 / 0.4</td>
+                        <td>9.2 / 0.4</td><td>99.4 / 3.3</td><td class="hm-cell">16.8 / 0.7</td>
+                        <td>2.3 / 0.1</td><td>100.0 / 3.0</td><td class="hm-cell">4.5 / 0.2</td>
+                        <td>4.2 / 0.2</td><td>100.0 / 3.2</td><td class="hm-cell">8.1 / 0.4</td>
+                        <td>0.0 / 0.0</td><td>100.0 / 3.2</td><td class="hm-cell">0.0 / 0.0</td>
+                        <td>7.3 / 0.3</td><td>100.0 / 3.3</td><td class="hm-cell">13.6 / 0.6</td>
+                    </tr>
+                    <tr>
+                        <td>+ FigStep</td>
+                        <td>76.3 / 1.8</td><td>80.4 / 2.5</td><td class="hm-cell"><u>78.3</u> / <u>2.1</u></td>
+                        <td>82.2 / 2.4</td><td>65.0 / 2.0</td><td class="hm-cell"><u>72.5</u> / <u>2.2</u></td>
+                        <td>68.2 / 1.6</td><td>72.7 / 2.1</td><td class="hm-cell"><u>70.4</u> / <u>1.8</u></td>
+                        <td>58.3 / 1.6</td><td>84.0 / 2.6</td><td class="hm-cell"><u>68.9</u> / <u>2.0</u></td>
+                        <td>67.5 / 1.8</td><td>76.0 / 2.3</td><td class="hm-cell"><u>71.5</u> / <u>2.0</u></td>
+                        <td>38.5 / 1.0</td><td>89.9 / 2.9</td><td class="hm-cell"><u>53.9</u> / <u>1.5</u></td>
+                    </tr>
+                    <tr>
+                        <td>+ ECSO</td>
+                        <td>37.1 / 1.2</td><td>100.0 / 3.1</td><td class="hm-cell">54.1 / 1.7</td>
+                        <td>34.6 / 1.4</td><td>100.0 / 3.3</td><td class="hm-cell">51.4 / 2.0</td>
+                        <td>18.2 / 0.7</td><td>100.0 / 3.0</td><td class="hm-cell">30.8 / 1.1</td>
+                        <td>22.9 / 0.9</td><td>100.0 / 3.2</td><td class="hm-cell">37.3 / 1.4</td>
+                        <td>22.1 / 0.8</td><td>99.4 / 3.2</td><td class="hm-cell">36.2 / 1.3</td>
+                        <td>11.0 / 0.4</td><td>100.0 / 3.3</td><td class="hm-cell">19.8 / 0.7</td>
+                    </tr>
+                    <tr>
+                        <td>+ AdaShield</td>
+                        <td>79.4 / 1.0</td><td>51.6 / 1.4</td><td class="hm-cell">62.6 / 1.2</td>
+                        <td>95.1 / 1.1</td><td>43.6 / 1.3</td><td class="hm-cell">59.8 / 1.2</td>
+                        <td>90.9 / 1.1</td><td>45.5 / 1.3</td><td class="hm-cell">60.6 / 1.2</td>
+                        <td>77.1 / 1.0</td><td>31.3 / 0.9</td><td class="hm-cell">44.5 / 0.9</td>
+                        <td>82.5 / 0.9</td><td>34.4 / 1.0</td><td class="hm-cell">48.6 / 0.9</td>
+                        <td>78.0 / 1.0</td><td>38.5 / 1.1</td><td class="hm-cell">51.6 / 1.0</td>
+                    </tr>
+                    <tr class="echo-row">
+                        <td>+ EchoSafe (Ours)</td>
+                        <td>67.0 / 2.3</td><td>99.0 / 2.9</td><td class="hm-cell"><strong>79.9</strong> / <strong>2.6</strong></td>
+                        <td>83.4 / 2.8</td><td>97.6 / 2.9</td><td class="hm-cell"><strong>89.9</strong> / <strong>2.8</strong></td>
+                        <td>71.8 / 2.0</td><td>97.8 / 2.9</td><td class="hm-cell"><strong>82.8</strong> / <strong>2.4</strong></td>
+                        <td>81.0 / 3.1</td><td>100.0 / 2.8</td><td class="hm-cell"><strong>89.5</strong> / <strong>2.9</strong></td>
+                        <td>74.7 / 2.5</td><td>98.1 / 3.1</td><td class="hm-cell"><strong>84.8</strong> / <strong>2.8</strong></td>
+                        <td>70.7 / 2.4</td><td>92.3 / 3.0</td><td class="hm-cell"><strong>80.1</strong> / <strong>2.7</strong></td>
+                    </tr>
+                    <!-- LLaVA-NeXT-7B -->
+                    <tr class="mid-border gray-row">
+                        <td rowspan="5" class="model-group-cell">LLaVA-NeXT-7B</td>
+                        <td>Base</td>
+                        <td>5.1 / 0.3</td><td>100.0 / 3.4</td><td class="hm-cell">9.7 / 0.6</td>
+                        <td>17.2 / 0.7</td><td>100.0 / 3.6</td><td class="hm-cell">29.3 / 1.1</td>
+                        <td>2.3 / 0.0</td><td>100.0 / 3.2</td><td class="hm-cell">4.5 / 0.0</td>
+                        <td>6.2 / 0.3</td><td>100.0 / 3.6</td><td class="hm-cell">11.7 / 0.6</td>
+                        <td>2.6 / 0.1</td><td>100.0 / 3.5</td><td class="hm-cell">5.1 / 0.2</td>
+                        <td>7.3 / 0.3</td><td>99.0 / 3.4</td><td class="hm-cell">13.5 / 0.6</td>
+                    </tr>
+                    <tr>
+                        <td>+ FigStep</td>
+                        <td>83.5 / 2.4</td><td>80.4 / 2.8</td><td class="hm-cell"><u>81.9</u> / <u>2.6</u></td>
+                        <td>82.2 / 2.6</td><td>62.0 / 2.2</td><td class="hm-cell"><u>70.7</u> / <u>2.4</u></td>
+                        <td>61.4 / 1.9</td><td>81.8 / 2.5</td><td class="hm-cell"><u>70.3</u> / <u>2.2</u></td>
+                        <td>56.3 / 1.9</td><td>88.2 / 3.1</td><td class="hm-cell"><u>68.7</u> / <u>2.4</u></td>
+                        <td>70.8 / 2.1</td><td>83.8 / 2.9</td><td class="hm-cell"><u>76.7</u> / <u>2.5</u></td>
+                        <td>28.4 / 0.9</td><td>89.0 / 3.0</td><td class="hm-cell">42.9 / <u>1.4</u></td>
+                    </tr>
+                    <tr>
+                        <td>+ ECSO</td>
+                        <td>45.4 / 1.6</td><td>99.0 / 3.4</td><td class="hm-cell">62.4 / 2.2</td>
+                        <td>46.0 / 1.8</td><td>100.0 / 3.6</td><td class="hm-cell">63.0 / 2.3</td>
+                        <td>36.4 / 1.4</td><td>97.7 / 3.3</td><td class="hm-cell">53.2 / 2.0</td>
+                        <td>31.3 / 1.2</td><td>99.3 / 3.5</td><td class="hm-cell">47.6 / 1.8</td>
+                        <td>30.5 / 1.2</td><td>100.0 / 3.1</td><td class="hm-cell">46.8 / 1.7</td>
+                        <td>9.2 / 0.4</td><td>99.1 / 3.3</td><td class="hm-cell">16.8 / 0.7</td>
+                    </tr>
+                    <tr>
+                        <td>+ AdaShield</td>
+                        <td>97.9 / 1.0</td><td>12.4 / 0.3</td><td class="hm-cell">22.1 / 0.4</td>
+                        <td>95.7 / 1.0</td><td>11.0 / 0.2</td><td class="hm-cell">19.7 / 0.3</td>
+                        <td>97.7 / 1.0</td><td>22.7 / 0.5</td><td class="hm-cell">36.9 / 0.7</td>
+                        <td>93.1 / 1.0</td><td>18.8 / 0.5</td><td class="hm-cell">31.4 / 0.7</td>
+                        <td>98.7 / 1.0</td><td>13.0 / 0.2</td><td class="hm-cell">22.9 / 0.4</td>
+                        <td>81.7 / 0.8</td><td>29.4 / 0.9</td><td class="hm-cell"><u>43.2</u> / 0.9</td>
+                    </tr>
+                    <tr class="echo-row">
+                        <td>+ EchoSafe (Ours)</td>
+                        <td>85.6 / 3.4</td><td>87.6 / 2.8</td><td class="hm-cell"><strong>86.6</strong> / <strong>3.1</strong></td>
+                        <td>87.7 / 3.5</td><td>90.2 / 2.8</td><td class="hm-cell"><strong>88.9</strong> / <strong>3.1</strong></td>
+                        <td>93.2 / 3.5</td><td>86.4 / 2.7</td><td class="hm-cell"><strong>89.7</strong> / <strong>3.1</strong></td>
+                        <td>85.4 / 3.6</td><td>90.3 / 2.9</td><td class="hm-cell"><strong>87.8</strong> / <strong>3.2</strong></td>
+                        <td>86.3 / 3.3</td><td>95.5 / 2.9</td><td class="hm-cell"><strong>90.6</strong> / <strong>3.1</strong></td>
+                        <td>58.4 / 2.1</td><td>89.9 / 2.4</td><td class="hm-cell"><strong>70.6</strong> / <strong>2.2</strong></td>
+                    </tr>
+                    <!-- Qwen2.5-VL-7B -->
+                    <tr class="mid-border gray-row">
+                        <td rowspan="5" class="model-group-cell">Qwen2.5-VL-7B</td>
+                        <td>Base</td>
+                        <td>29.9 / 1.3</td><td>100.0 / 3.8</td><td class="hm-cell">45.9 / 2.0</td>
+                        <td>30.7 / 1.3</td><td>100.0 / 4.0</td><td class="hm-cell">47.0 / 2.1</td>
+                        <td>11.4 / 0.6</td><td>100.0 / 3.7</td><td class="hm-cell">20.5 / 1.0</td>
+                        <td>20.1 / 0.9</td><td>100.0 / 3.8</td><td class="hm-cell">33.4 / 1.3</td>
+                        <td>19.5 / 0.9</td><td>100.0 / 3.9</td><td class="hm-cell">32.7 / 1.3</td>
+                        <td>13.8 / 0.6</td><td>99.1 / 3.7</td><td class="hm-cell">24.2 / 1.0</td>
+                    </tr>
+                    <tr>
+                        <td>+ FigStep</td>
+                        <td>54.2 / 2.0</td><td>97.9 / 3.7</td><td class="hm-cell">69.5 / <u>2.6</u></td>
+                        <td>60.7 / 2.4</td><td>99.4 / 3.8</td><td class="hm-cell"><u>75.4</u> / <u>2.9</u></td>
+                        <td>43.2 / 1.8</td><td>100.0 / 3.7</td><td class="hm-cell">60.3 / <u>2.4</u></td>
+                        <td>43.1 / 1.7</td><td>100.0 / 3.8</td><td class="hm-cell">60.2 / <u>2.4</u></td>
+                        <td>46.1 / 1.9</td><td>100.0 / 3.9</td><td class="hm-cell">63.1 / <u>2.6</u></td>
+                        <td>22.9 / 1.0</td><td>98.2 / 3.7</td><td class="hm-cell">37.3 / <u>1.6</u></td>
+                    </tr>
+                    <tr>
+                        <td>+ ECSO</td>
+                        <td>39.2 / 1.8</td><td>100.0 / 3.8</td><td class="hm-cell">56.3 / 2.4</td>
+                        <td>32.5 / 1.5</td><td>100.0 / 3.9</td><td class="hm-cell">49.1 / 2.3</td>
+                        <td>22.7 / 1.1</td><td>100.0 / 3.8</td><td class="hm-cell">37.0 / 1.7</td>
+                        <td>21.5 / 1.0</td><td>100.0 / 3.8</td><td class="hm-cell">35.4 / 1.6</td>
+                        <td>31.8 / 1.5</td><td>100.0 / 3.9</td><td class="hm-cell">48.3 / 2.2</td>
+                        <td>14.7 / 0.6</td><td>99.1 / 3.7</td><td class="hm-cell">25.5 / 1.1</td>
+                    </tr>
+                    <tr>
+                        <td>+ AdaShield</td>
+                        <td>78.4 / 1.3</td><td>62.9 / 2.3</td><td class="hm-cell"><u>69.8</u> / 1.7</td>
+                        <td>87.7 / 1.0</td><td>65.6 / 2.5</td><td class="hm-cell">75.2 / 1.5</td>
+                        <td>88.6 / 1.4</td><td>72.7 / 2.7</td><td class="hm-cell"><u>79.8</u> / 1.9</td>
+                        <td>69.4 / 1.0</td><td>69.4 / 2.6</td><td class="hm-cell"><u>69.4</u> / 1.6</td>
+                        <td>64.9 / 1.6</td><td>96.8 / 3.7</td><td class="hm-cell"><u>77.7</u> / 2.3</td>
+                        <td>67.9 / 1.1</td><td>45.9 / 1.8</td><td class="hm-cell"><u>54.8</u> / 1.4</td>
+                    </tr>
+                    <tr class="echo-row bot-border">
+                        <td>+ EchoSafe (Ours)</td>
+                        <td>83.5 / 3.7</td><td>95.9 / 3.6</td><td class="hm-cell"><strong>89.3</strong> / <strong>3.6</strong></td>
+                        <td>92.6 / 3.9</td><td>93.8 / 3.3</td><td class="hm-cell"><strong>93.2</strong> / <strong>3.6</strong></td>
+                        <td>95.5 / 4.0</td><td>91.6 / 3.5</td><td class="hm-cell"><strong>93.5</strong> / <strong>3.8</strong></td>
+                        <td>81.0 / 3.5</td><td>88.0 / 3.2</td><td class="hm-cell"><strong>84.4</strong> / <strong>3.3</strong></td>
+                        <td>79.9 / 3.4</td><td>98.1 / 3.8</td><td class="hm-cell"><strong>88.1</strong> / <strong>3.6</strong></td>
+                        <td>70.6 / 2.8</td><td>89.0 / 3.3</td><td class="hm-cell"><strong>78.7</strong> / <strong>3.0</strong></td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+        <p class="caption" style="font-size: 90%;">
+            <strong>Table 3. Performance comparison on MM-SafetyBench++ under the Gen attack mode.</strong>
+            Higher (↑) values indicate better performance. All evaluations use <em>gpt-5-mini</em> as the judge.
+            Best results are <strong>bolded</strong>; second-best are <u>underlined</u>. Gray rows show unmodified base models.
+            <span style="display:inline-block; background:#dbeafe; padding:1px 6px; border-radius:3px;">Blue</span> rows denote EchoSafe (Ours).
+        </p>
+    </div>
+
+
+    <div class="container blog extra-large">
+        <div style="overflow-x: auto;">
+            <table class="results-table">
+                <thead>
+                    <tr class="top-border">
+                        <th colspan="2" rowspan="3" style="border-right: 1px solid #ccc; border-bottom: 2px solid #aaa; text-align: center;"><strong>Method</strong></th>
+                        <th colspan="3"><strong>Illegal Activity</strong></th>
+                        <th colspan="3"><strong>Hate Speech</strong></th>
+                        <th colspan="3"><strong>Malware Generation</strong></th>
+                        <th colspan="3"><strong>Physical Harm</strong></th>
+                        <th colspan="3"><strong>Fraud</strong></th>
+                        <th colspan="3"><strong>Sex</strong></th>
+                    </tr>
+                    <tr>
+                        <th>Unsafe</th><th>Safe</th><th>HM</th>
+                        <th>Unsafe</th><th>Safe</th><th>HM</th>
+                        <th>Unsafe</th><th>Safe</th><th>HM</th>
+                        <th>Unsafe</th><th>Safe</th><th>HM</th>
+                        <th>Unsafe</th><th>Safe</th><th>HM</th>
+                        <th>Unsafe</th><th>Safe</th><th>HM</th>
+                    </tr>
+                    <tr class="sub-row">
+                        <th>RR / QS</th><th>AR / QS</th><th class="hm-cell">CCR / QS</th>
+                        <th>RR / QS</th><th>AR / QS</th><th class="hm-cell">CCR / QS</th>
+                        <th>RR / QS</th><th>AR / QS</th><th class="hm-cell">CCR / QS</th>
+                        <th>RR / QS</th><th>AR / QS</th><th class="hm-cell">CCR / QS</th>
+                        <th>RR / QS</th><th>AR / QS</th><th class="hm-cell">CCR / QS</th>
+                        <th>RR / QS</th><th>AR / QS</th><th class="hm-cell">CCR / QS</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <!-- LLaVA-1.5-7B -->
+                    <tr class="mid-border gray-row">
+                        <td rowspan="5" class="model-group-cell">LLaVA-1.5-7B</td>
+                        <td>Base</td>
+                        <td>5.2 / 0.3</td><td>100.0 / 3.1</td><td class="hm-cell">9.9 / 0.6</td>
+                        <td>17.8 / 0.8</td><td>99.4 / 3.4</td><td class="hm-cell">30.1 / 1.2</td>
+                        <td>4.6 / 0.2</td><td>100.0 / 2.8</td><td class="hm-cell">8.8 / 0.4</td>
+                        <td>4.2 / 0.2</td><td>100.0 / 3.1</td><td class="hm-cell">8.0 / 0.4</td>
+                        <td>4.6 / 0.2</td><td>100.0 / 3.1</td><td class="hm-cell">8.8 / 0.4</td>
+                        <td>10.1 / 0.4</td><td>100.0 / 3.1</td><td class="hm-cell">18.4 / 0.7</td>
+                    </tr>
+                    <tr>
+                        <td>+ FigStep</td>
+                        <td>75.3 / 2.2</td><td>84.5 / 2.7</td><td class="hm-cell"><u>79.5</u> / <u>2.4</u></td>
+                        <td>77.3 / 2.4</td><td>86.5 / 2.8</td><td class="hm-cell"><u>81.7</u> / <u>2.6</u></td>
+                        <td>68.2 / 1.8</td><td>97.7 / 2.7</td><td class="hm-cell"><u>79.7</u> / <u>2.1</u></td>
+                        <td>50.7 / 1.6</td><td>92.4 / 3.0</td><td class="hm-cell"><u>65.5</u> / <u>2.0</u></td>
+                        <td>56.5 / 1.8</td><td>81.8 / 2.6</td><td class="hm-cell"><u>66.7</u> / <u>2.1</u></td>
+                        <td>33.0 / 0.9</td><td>92.7 / 2.8</td><td class="hm-cell">48.6 / <u>1.3</u></td>
+                    </tr>
+                    <tr>
+                        <td>+ ECSO</td>
+                        <td>13.4 / 0.5</td><td>100.0 / 2.6</td><td class="hm-cell">26.4 / 0.9</td>
+                        <td>28.3 / 1.2</td><td>100.0 / 2.9</td><td class="hm-cell">44.1 / 1.7</td>
+                        <td>6.8 / 0.2</td><td>100.0 / 2.3</td><td class="hm-cell">12.7 / 0.5</td>
+                        <td>10.4 / 0.4</td><td>100.0 / 2.5</td><td class="hm-cell">19.0 / 0.8</td>
+                        <td>13.0 / 0.5</td><td>100.0 / 2.5</td><td class="hm-cell">25.8 / 0.9</td>
+                        <td>15.8 / 0.7</td><td>100.0 / 2.6</td><td class="hm-cell">27.3 / 1.1</td>
+                    </tr>
+                    <tr>
+                        <td>+ AdaShield</td>
+                        <td>90.7 / 1.1</td><td>37.1 / 0.9</td><td class="hm-cell">52.6 / 1.0</td>
+                        <td>93.3 / 1.1</td><td>50.3 / 1.7</td><td class="hm-cell">65.1 / 1.3</td>
+                        <td>93.2 / 1.0</td><td>45.5 / 1.1</td><td class="hm-cell">60.8 / 1.0</td>
+                        <td>80.6 / 1.0</td><td>32.6 / 0.9</td><td class="hm-cell">46.3 / 1.0</td>
+                        <td>85.7 / 1.0</td><td>35.7 / 1.1</td><td class="hm-cell">50.5 / 1.0</td>
+                        <td>71.6 / 1.0</td><td>45.9 / 1.3</td><td class="hm-cell"><u>55.6</u> / 1.1</td>
+                    </tr>
+                    <tr class="echo-row">
+                        <td>+ EchoSafe (Ours)</td>
+                        <td>86.6 / 3.3</td><td>95.9 / 2.9</td><td class="hm-cell"><strong>90.9</strong> / <strong>3.1</strong></td>
+                        <td>87.7 / 3.2</td><td>96.9 / 3.0</td><td class="hm-cell"><strong>92.1</strong> / <strong>3.1</strong></td>
+                        <td>70.5 / 2.2</td><td>97.7 / 2.9</td><td class="hm-cell"><strong>82.0</strong> / <strong>2.5</strong></td>
+                        <td>78.5 / 3.0</td><td>95.8 / 3.0</td><td class="hm-cell"><strong>86.2</strong> / <strong>3.0</strong></td>
+                        <td>79.2 / 2.9</td><td>96.1 / 2.9</td><td class="hm-cell"><strong>86.5</strong> / <strong>2.9</strong></td>
+                        <td>55.9 / 1.4</td><td>86.2 / 2.0</td><td class="hm-cell"><strong>67.6</strong> / <strong>1.6</strong></td>
+                    </tr>
+                    <!-- LLaVA-NeXT-7B -->
+                    <tr class="mid-border gray-row">
+                        <td rowspan="5" class="model-group-cell">LLaVA-NeXT-7B</td>
+                        <td>Base</td>
+                        <td>8.3 / 0.4</td><td>100.0 / 3.4</td><td class="hm-cell">15.3 / 0.7</td>
+                        <td>23.9 / 1.1</td><td>100.0 / 3.8</td><td class="hm-cell">38.6 / 1.7</td>
+                        <td>4.6 / 0.2</td><td>100.0 / 3.1</td><td class="hm-cell">8.8 / 0.4</td>
+                        <td>4.2 / 0.2</td><td>100.0 / 3.5</td><td class="hm-cell">8.0 / 0.4</td>
+                        <td>3.9 / 0.2</td><td>100.0 / 3.6</td><td class="hm-cell">7.5 / 0.4</td>
+                        <td>11.9 / 0.5</td><td>100.0 / 3.4</td><td class="hm-cell">21.4 / 0.9</td>
+                    </tr>
+                    <tr>
+                        <td>+ FigStep</td>
+                        <td>82.5 / 2.6</td><td>91.8 / 3.4</td><td class="hm-cell">86.9 / 3.0</td>
+                        <td>80.4 / 2.9</td><td>91.4 / 3.6</td><td class="hm-cell"><u>85.5</u> / <u>3.2</u></td>
+                        <td>52.3 / 2.1</td><td>90.9 / 3.0</td><td class="hm-cell"><u>66.4</u> / <u>2.5</u></td>
+                        <td>50.0 / 1.8</td><td>94.4 / 3.4</td><td class="hm-cell">65.4 / 2.4</td>
+                        <td>54.6 / 1.8</td><td>90.3 / 3.2</td><td class="hm-cell">68.1 / 2.3</td>
+                        <td>28.4 / 0.8</td><td>96.3 / 3.3</td><td class="hm-cell">43.8 / <u>1.3</u></td>
+                    </tr>
+                    <tr>
+                        <td>+ ECSO</td>
+                        <td>80.4 / 3.0</td><td>99.0 / 3.5</td><td class="hm-cell"><u>88.7</u> / <u>3.2</u></td>
+                        <td>61.4 / 2.5</td><td>100.0 / 3.9</td><td class="hm-cell">76.1 / 3.1</td>
+                        <td>50.0 / 1.9</td><td>97.7 / 3.0</td><td class="hm-cell">66.1 / 2.3</td>
+                        <td>52.8 / 2.1</td><td>98.6 / 3.5</td><td class="hm-cell"><u>68.8</u> / <u>2.6</u></td>
+                        <td>68.2 / 2.7</td><td>99.4 / 3.5</td><td class="hm-cell"><u>80.9</u> / <u>3.0</u></td>
+                        <td>19.3 / 0.6</td><td>97.3 / 3.2</td><td class="hm-cell">32.2 / 1.0</td>
+                    </tr>
+                    <tr>
+                        <td>+ AdaShield</td>
+                        <td>100.0 / 1.0</td><td>11.3 / 0.3</td><td class="hm-cell">20.3 / 0.5</td>
+                        <td>99.1 / 1.1</td><td>14.7 / 0.2</td><td class="hm-cell">25.6 / 0.3</td>
+                        <td>100.0 / 1.1</td><td>22.7 / 0.5</td><td class="hm-cell">37.0 / 0.7</td>
+                        <td>94.4 / 1.0</td><td>25.0 / 0.7</td><td class="hm-cell">39.5 / 0.8</td>
+                        <td>99.4 / 1.0</td><td>9.1 / 0.1</td><td class="hm-cell">16.7 / 0.2</td>
+                        <td>83.5 / 1.2</td><td>31.2 / 1.1</td><td class="hm-cell"><u>45.4</u> / 1.2</td>
+                    </tr>
+                    <tr class="echo-row">
+                        <td>+ EchoSafe (Ours)</td>
+                        <td>95.9 / 3.9</td><td>90.7 / 2.9</td><td class="hm-cell"><strong>93.3</strong> / <strong>3.3</strong></td>
+                        <td>96.3 / 3.9</td><td>90.2 / 3.0</td><td class="hm-cell"><strong>93.1</strong> / <strong>3.4</strong></td>
+                        <td>90.9 / 3.4</td><td>88.6 / 2.4</td><td class="hm-cell"><strong>89.7</strong> / <strong>2.8</strong></td>
+                        <td>88.9 / 3.6</td><td>91.7 / 3.1</td><td class="hm-cell"><strong>90.3</strong> / <strong>3.3</strong></td>
+                        <td>96.8 / 4.5</td><td>96.1 / 3.7</td><td class="hm-cell"><strong>96.5</strong> / <strong>4.1</strong></td>
+                        <td>93.6 / 3.9</td><td>77.1 / 2.6</td><td class="hm-cell"><strong>84.6</strong> / <strong>3.1</strong></td>
+                    </tr>
+                    <!-- Qwen2.5-VL-7B -->
+                    <tr class="mid-border gray-row">
+                        <td rowspan="5" class="model-group-cell">Qwen2.5-VL-7B</td>
+                        <td>Base</td>
+                        <td>38.1 / 1.9</td><td>100.0 / 3.8</td><td class="hm-cell">55.2 / 2.5</td>
+                        <td>51.5 / 2.5</td><td>100.0 / 4.0</td><td class="hm-cell">68.0 / 3.1</td>
+                        <td>4.6 / 0.2</td><td>100.0 / 3.0</td><td class="hm-cell">8.8 / 0.4</td>
+                        <td>20.1 / 1.0</td><td>100.0 / 3.9</td><td class="hm-cell">33.5 / 1.6</td>
+                        <td>29.9 / 1.4</td><td>100.0 / 3.8</td><td class="hm-cell">46.0 / 2.0</td>
+                        <td>25.7 / 1.1</td><td>99.1 / 3.5</td><td class="hm-cell">40.8 / 1.7</td>
+                    </tr>
+                    <tr>
+                        <td>+ FigStep</td>
+                        <td>82.5 / 3.6</td><td>100.0 / 3.8</td><td class="hm-cell">90.4 / <u>3.7</u></td>
+                        <td>81.6 / 3.6</td><td>99.4 / 9.0</td><td class="hm-cell"><u>89.7</u> / 5.1</td>
+                        <td>50.0 / 2.4</td><td>100.0 / 3.7</td><td class="hm-cell">66.7 / <u>2.9</u></td>
+                        <td>55.6 / 2.5</td><td>100.0 / 3.9</td><td class="hm-cell">71.5 / <u>3.0</u></td>
+                        <td>75.3 / 3.5</td><td>100.0 / 3.9</td><td class="hm-cell"><u>86.0</u> / <u>3.7</u></td>
+                        <td>55.1 / 2.2</td><td>97.3 / 3.5</td><td class="hm-cell"><u>70.4</u> / <u>2.7</u></td>
+                    </tr>
+                    <tr>
+                        <td>+ ECSO</td>
+                        <td>61.9 / 3.0</td><td>100.0 / 3.8</td><td class="hm-cell">76.5 / 3.4</td>
+                        <td>58.9 / 2.8</td><td>100.0 / 4.0</td><td class="hm-cell">74.1 / 3.3</td>
+                        <td>34.1 / 1.7</td><td>100.0 / 3.5</td><td class="hm-cell">50.9 / 2.3</td>
+                        <td>38.9 / 1.9</td><td>100.0 / 3.8</td><td class="hm-cell">56.0 / 2.5</td>
+                        <td>53.3 / 1.6</td><td>100.0 / 3.9</td><td class="hm-cell">69.5 / 2.3</td>
+                        <td>29.4 / 1.3</td><td>99.1 / 3.4</td><td class="hm-cell">45.3 / 1.9</td>
+                    </tr>
+                    <tr>
+                        <td>+ AdaShield</td>
+                        <td>97.9 / 2.0</td><td>86.6 / 3.3</td><td class="hm-cell"><u>91.8</u> / 2.5</td>
+                        <td>95.7 / 1.8</td><td>81.4 / 3.1</td><td class="hm-cell">88.0 / 2.3</td>
+                        <td>79.6 / 1.8</td><td>70.9 / 2.6</td><td class="hm-cell"><u>75.0</u> / 2.1</td>
+                        <td>77.1 / 1.6</td><td>81.7 / 3.1</td><td class="hm-cell"><u>79.3</u> / 2.1</td>
+                        <td>83.1 / 1.4</td><td>60.4 / 2.3</td><td class="hm-cell">70.0 / 1.7</td>
+                        <td>69.8 / 1.4</td><td>46.8 / 1.9</td><td class="hm-cell">56.0 / 1.6</td>
+                    </tr>
+                    <tr class="echo-row bot-border">
+                        <td>+ EchoSafe (Ours)</td>
+                        <td>100.0 / 4.5</td><td>92.8 / 3.5</td><td class="hm-cell"><strong>96.3</strong> / <strong>3.9</strong></td>
+                        <td>98.2 / 4.4</td><td>96.9 / 3.8</td><td class="hm-cell"><strong>97.6</strong> / <strong>4.1</strong></td>
+                        <td>100.0 / 4.5</td><td>88.6 / 3.0</td><td class="hm-cell"><strong>94.0</strong> / <strong>3.6</strong></td>
+                        <td>93.8 / 4.1</td><td>88.2 / 3.3</td><td class="hm-cell"><strong>90.9</strong> / <strong>3.7</strong></td>
+                        <td>96.8 / 4.4</td><td>96.8 / 3.7</td><td class="hm-cell"><strong>96.8</strong> / <strong>4.0</strong></td>
+                        <td>91.7 / 3.8</td><td>77.9 / 2.7</td><td class="hm-cell"><strong>84.2</strong> / <strong>3.2</strong></td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+        <p class="caption" style="font-size: 90%;">
+            <strong>Table 4. Performance comparison on MM-SafetyBench++ under the GenOCR attack mode.</strong>
+            Higher (↑) values indicate better performance. All evaluations use <em>gpt-5-mini</em> as the judge.
+            Best results are <strong>bolded</strong>; second-best are <u>underlined</u>. Gray rows show unmodified base models.
+            <span style="display:inline-block; background:#dbeafe; padding:1px 6px; border-radius:3px;">Blue</span> rows denote EchoSafe (Ours).
+        </p>
+    </div>
+
+    <div class="container blog main">
+        <h2>EchoSafe on Other Safety &amp; General Benchmarks</h2>
+        <p class="text">
+            On <strong>MM-SafetyBench</strong>, EchoSafe reduces ASR on Qwen-2.5-VL to <strong>0.04%</strong> / <strong>0.02%</strong> (SD / TYPO), near-perfect across all categories.
+            On <strong>MSSBench</strong>, EchoSafe improves avg. safety by <strong>+18.75%</strong> on MSSBench-Chat.
+            On <strong>SIUO</strong>, EchoSafe gains <strong>+27.04%</strong> (Safe) and <strong>+20.83%</strong> (Reasoning).
+            On <strong>general benchmarks</strong> (MME, MMBench, ScienceQA, TextVQA), performance is nearly lossless — safety gains do not compromise utility.
+        </p>
+    </div>
+
+    <div class="container blog extra-large">
+        <div style="overflow-x: auto;">
+            <table class="results-table">
+                <thead>
+                    <tr class="top-border">
+                        <th rowspan="2" style="border-right: 1px solid #ccc; border-bottom: 2px solid #aaa;"></th>
+                        <th rowspan="2" style="text-align: left; padding-left: 10px; min-width: 120px; border-bottom: 2px solid #aaa;"><strong>Method</strong></th>
+                        <th colspan="3"><strong>MM-SafetyBench</strong></th>
+                        <th colspan="3"><strong>MSSBench-Chat</strong></th>
+                        <th colspan="3"><strong>MSSBench-Embodied</strong></th>
+                        <th colspan="3"><strong>SIUO</strong></th>
+                        <th colspan="5"><strong>Comprehensive Benchmarks</strong></th>
+                    </tr>
+                    <tr class="sub-row">
+                        <th>SD ↓</th><th>TYPO ↓</th><th>SD-TYPO ↓</th>
+                        <th>Safe ↑</th><th>Unsafe ↑</th><th>Avg ↑</th>
+                        <th>Safe ↑</th><th>Unsafe ↑</th><th>Avg ↑</th>
+                        <th>S ↑</th><th>S&amp;E ↑</th><th>R ↑</th>
+                        <th>MME<sup>P</sup> ↑</th><th>MME<sup>C</sup> ↑</th><th>MMB ↑</th><th>SQA ↑</th><th>VQA<sup>Text</sup> ↑</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <!-- LLaVA-1.5-7B -->
+                    <tr class="mid-border gray-row">
+                        <td rowspan="5" class="model-group-cell">LLaVA-1.5-7B</td>
+                        <td>Base</td>
+                        <td>20.76</td><td>66.08</td><td>57.99</td>
+                        <td>97.50</td><td>6.50</td><td>52.00</td>
+                        <td><strong>100.00</strong></td><td>0.79</td><td>50.39</td>
+                        <td>17.37</td><td><u>16.17</u></td><td>8.38</td>
+                        <td><strong>1507.53</strong></td><td><u>357.86</u></td><td><strong>64.69</strong></td><td><strong>69.51</strong></td><td><strong>58.20</strong></td>
+                    </tr>
+                    <tr>
+                        <td>+ FigStep</td>
+                        <td>15.09</td><td>5.97</td><td>38.71</td>
+                        <td><strong>98.50</strong></td><td>5.50</td><td>52.00</td>
+                        <td><strong>100.00</strong></td><td>0.26</td><td>50.13</td>
+                        <td><strong>36.53</strong></td><td><strong>16.77</strong></td><td><strong>9.58</strong></td>
+                        <td>1420.30</td><td>292.50</td><td>62.88</td><td>68.27</td><td>56.36</td>
+                    </tr>
+                    <tr>
+                        <td>+ ECSO</td>
+                        <td>23.41</td><td>16.08</td><td>41.57</td>
+                        <td><u>98.00</u></td><td>5.33</td><td>51.67</td>
+                        <td><strong>100.00</strong></td><td>0.25</td><td>50.13</td>
+                        <td>16.77</td><td>14.97</td><td>7.19</td>
+                        <td><u>1497.53</u></td><td><strong>360.00</strong></td><td><u>64.51</u></td><td><strong>69.51</strong></td><td><u>58.15</u></td>
+                    </tr>
+                    <tr>
+                        <td>+ AdaShield</td>
+                        <td><u>1.05</u></td><td><strong>0.22</strong></td><td><u>1.30</u></td>
+                        <td>33.33</td><td><strong>76.67</strong></td><td><u>55.00</u></td>
+                        <td>34.47</td><td><strong>74.21</strong></td><td><u>54.24</u></td>
+                        <td>29.34</td><td>0.60</td><td>0.00</td>
+                        <td>1398.34</td><td>314.64</td><td>59.87</td><td>67.03</td><td>56.15</td>
+                    </tr>
+                    <tr class="echo-row bot-border">
+                        <td>+ EchoSafe (Ours)</td>
+                        <td><strong>0.37</strong></td><td><u>0.46</u></td><td><strong>1.10</strong></td>
+                        <td>62.33</td><td><u>59.17</u></td><td><strong>60.75</strong></td>
+                        <td>64.47</td><td><u>64.47</u></td><td><strong>64.47</strong></td>
+                        <td><u>32.93</u></td><td>13.41</td><td><u>8.48</u></td>
+                        <td>1475.91</td><td>294.29</td><td>64.34</td><td>69.31</td><td>57.92</td>
+                    </tr>
+                    <!-- LLaVA-NeXT-7B -->
+                    <tr class="mid-border gray-row">
+                        <td rowspan="5" class="model-group-cell">LLaVA-NeXT-7B</td>
+                        <td>Base</td>
+                        <td>18.70</td><td>40.01</td><td>39.64</td>
+                        <td><strong>98.17</strong></td><td>5.33</td><td><u>52.75</u></td>
+                        <td><strong>100.00</strong></td><td>0.53</td><td>50.26</td>
+                        <td>19.76</td><td>19.76</td><td>7.78</td>
+                        <td><strong>1519.80</strong></td><td><strong>330.00</strong></td><td><strong>67.86</strong></td><td><u>70.20</u></td><td><strong>61.36</strong></td>
+                    </tr>
+                    <tr>
+                        <td>+ FigStep</td>
+                        <td>11.53</td><td>8.63</td><td>23.60</td>
+                        <td><u>96.50</u></td><td>7.67</td><td>52.00</td>
+                        <td><strong>100.00</strong></td><td>0.26</td><td>50.13</td>
+                        <td>29.34</td><td>20.36</td><td><u>10.78</u></td>
+                        <td>1464.63</td><td>277.14</td><td>66.58</td><td>68.62</td><td>59.98</td>
+                    </tr>
+                    <tr>
+                        <td>+ ECSO</td>
+                        <td>19.61</td><td>25.71</td><td>42.58</td>
+                        <td>95.50</td><td>7.67</td><td>51.58</td>
+                        <td>99.74</td><td>2.11</td><td>50.92</td>
+                        <td>22.75</td><td><u>21.56</u></td><td>7.19</td>
+                        <td><u>1514.05</u></td><td><u>328.57</u></td><td>65.80</td><td><strong>70.25</strong></td><td><u>60.85</u></td>
+                    </tr>
+                    <tr>
+                        <td>+ AdaShield</td>
+                        <td><u>0.49</u></td><td><strong>0.23</strong></td><td><u>1.46</u></td>
+                        <td>23.83</td><td><strong>81.50</strong></td><td>52.67</td>
+                        <td>88.95</td><td><u>20.00</u></td><td><u>54.47</u></td>
+                        <td><strong>32.93</strong></td><td>0.60</td><td>1.80</td>
+                        <td>1438.66</td><td>287.86</td><td>64.08</td><td>67.67</td><td>54.24</td>
+                    </tr>
+                    <tr class="echo-row bot-border">
+                        <td>+ EchoSafe (Ours)</td>
+                        <td><strong>0.32</strong></td><td><u>0.57</u></td><td><strong>0.99</strong></td>
+                        <td>75.17</td><td><u>58.17</u></td><td><strong>66.67</strong></td>
+                        <td>55.66</td><td><strong>66.58</strong></td><td><strong>61.12</strong></td>
+                        <td><u>32.73</u></td><td><strong>21.82</strong></td><td><strong>13.94</strong></td>
+                        <td>1503.57</td><td>286.43</td><td><u>67.69</u></td><td>69.11</td><td>58.99</td>
+                    </tr>
+                    <!-- Qwen-2.5-VL-7B -->
+                    <tr class="mid-border gray-row">
+                        <td rowspan="5" class="model-group-cell">Qwen-2.5-VL-7B</td>
+                        <td>Base</td>
+                        <td>22.72</td><td>25.05</td><td>32.91</td>
+                        <td><strong>96.67</strong></td><td>14.17</td><td>55.42</td>
+                        <td><strong>100.00</strong></td><td>0.53</td><td>50.26</td>
+                        <td>31.14</td><td>29.94</td><td><u>17.96</u></td>
+                        <td><strong>1688.09</strong></td><td><strong>612.14</strong></td><td>83.76</td><td>77.09</td><td><u>77.73</u></td>
+                    </tr>
+                    <tr>
+                        <td>+ FigStep</td>
+                        <td>9.39</td><td>13.57</td><td>16.31</td>
+                        <td>95.33</td><td>9.50</td><td>52.42</td>
+                        <td>99.47</td><td>3.68</td><td>51.58</td>
+                        <td>37.72</td><td><u>37.13</u></td><td>17.37</td>
+                        <td>1610.03</td><td>591.07</td><td>83.33</td><td><u>79.38</u></td><td>70.14</td>
+                    </tr>
+                    <tr>
+                        <td>+ ECSO</td>
+                        <td>20.80</td><td>21.25</td><td>32.45</td>
+                        <td><u>96.33</u></td><td>9.50</td><td>52.92</td>
+                        <td><strong>100.00</strong></td><td>0.53</td><td>50.26</td>
+                        <td>32.34</td><td>31.14</td><td>14.37</td>
+                        <td><strong>1688.09</strong></td><td><strong>612.14</strong></td><td>83.76</td><td>77.09</td><td><strong>77.74</strong></td>
+                    </tr>
+                    <tr>
+                        <td>+ AdaShield</td>
+                        <td><u>0.09</u></td><td><strong>0.00</strong></td><td><u>1.20</u></td>
+                        <td>18.00</td><td><strong>92.17</strong></td><td><u>55.08</u></td>
+                        <td>49.47</td><td><u>77.89</u></td><td><u>63.82</u></td>
+                        <td><u>38.32</u></td><td>32.93</td><td><u>17.96</u></td>
+                        <td>1386.09</td><td>586.07</td><td><strong>84.62</strong></td><td><strong>84.58</strong></td><td>68.96</td>
+                    </tr>
+                    <tr class="echo-row bot-border">
+                        <td>+ EchoSafe (Ours)</td>
+                        <td><strong>0.04</strong></td><td><u>0.02</u></td><td><strong>0.71</strong></td>
+                        <td>66.17</td><td><u>82.17</u></td><td><strong>74.17</strong></td>
+                        <td>39.21</td><td><strong>91.58</strong></td><td><strong>65.40</strong></td>
+                        <td><strong>58.18</strong></td><td><strong>52.12</strong></td><td><strong>38.79</strong></td>
+                        <td>1637.31</td><td>601.07</td><td><u>84.10</u></td><td>78.24</td><td>77.01</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+        <p class="caption" style="font-size: 90%;">
+            <strong>Table 5. Performance comparison on other safety benchmarks across three representative MLLMs.</strong>
+            For MM-SafetyBench, ASR ↓ (lower is better); for all other benchmarks, higher ↑ is better.
+            Best results are <strong>bolded</strong>; second-best are <u>underlined</u>.
+            <span style="display:inline-block; background:#dbeafe; padding:1px 6px; border-radius:3px;">Blue</span> rows denote EchoSafe (Ours).
+        </p>
+    </div>
+
+
+
+
+    <!-- ABLATION SECTION (commented out)
+    <div class="container blog main">
+        <h2>Ablations</h2>
+        <p class="text">
+            <strong>Memory Accumulation:</strong> As the memory bank grows, EchoSafe progressively improves safety reasoning, with peak gains of <strong>+5.2% CCR</strong>.
+            &nbsp;&nbsp;<br>
+            <strong>Efficiency:</strong> EchoSafe incurs only <strong>1.33&times;</strong> inference time and <strong>1.69&times;</strong> FLOPs overhead, yet achieves a <strong>2.60&times;</strong> safety improvement — surpassing GPT-5 on open-source models.
+            &nbsp;&nbsp;<br>
+            <strong>Judge Agreement:</strong> GPT-5-Mini correlates strongly with both Gemini-2.5-Flash (&rho;&thinsp;=&thinsp;0.72) and human annotators (&rho;&thinsp;=&thinsp;0.74), validating our automated evaluation.
+        </p>
+    </div>
+
+    <div class="container blog extra-large gray">
+        <div class="bm-carousel" id="ablCarousel">
+            <div class="bm-track" id="ablTrack">
+                <div class="bm-slide active"><img src="assets/figures/accumulation.png"></div>
+                <div class="bm-slide"><img src="assets/figures/efficiency.png"></div>
+                <div class="bm-slide"><img src="assets/figures/agreement.png"></div>
+            </div>
+            <div class="slide-menu">
+                <ul class="dots" id="ablDots">
+                    <li class="dot active" data-index="0"></li>
+                    <li class="dot" data-index="1"></li>
+                    <li class="dot" data-index="2"></li>
+                </ul>
+            </div>
+        </div>
+
+        <p class="caption" style="font-size: 90%;">
+            <strong>(Left) Memory Accumulation</strong> — CCR/QS vs. memory bank size.<br>
+            <strong>(Middle) Efficiency</strong> — safety gain vs. computational cost.<br>
+            <strong>(Right) Judge Agreement</strong> — GPT-5-Mini vs. Gemini-2.5-Flash &amp; human evaluators.<br>
+            Click the dots or drag to explore.
+        </p>
+
+        <script>
+        (function () {
+            const carousel = document.getElementById('ablCarousel');
+            const track    = document.getElementById('ablTrack');
+            const slides   = Array.from(track.querySelectorAll('.bm-slide'));
+            const dots     = Array.from(document.getElementById('ablDots').querySelectorAll('.dot'));
+            let current = 0;
+
+            function goTo(index) {
+                current = Math.max(0, Math.min(slides.length - 1, index));
+                const wrapperW = carousel.offsetWidth;
+                const slideW   = slides[0].offsetWidth;
+                const gap      = (wrapperW - slideW) / 2;
+                track.style.transform = `translateX(${gap - current * (slideW + wrapperW * 0.03)}px)`;
+                slides.forEach((s, i) => s.classList.toggle('active', i === current));
+                dots.forEach((d, i)   => d.classList.toggle('active', i === current));
+            }
+
+            dots.forEach(d => d.addEventListener('click', () => goTo(+d.dataset.index)));
+            slides.forEach((s, i) => s.addEventListener('click', () => { if (i !== current) goTo(i); }));
+            window.addEventListener('resize', () => goTo(current));
+
+            let startX = 0, dragging = false;
+            track.addEventListener('mousedown',  e => { dragging = true; startX = e.clientX; track.style.transition = 'none'; });
+            track.addEventListener('mousemove',  e => { if (!dragging) return; e.preventDefault(); });
+            track.addEventListener('mouseup',    e => { if (!dragging) return; dragging = false; track.style.transition = ''; const dx = e.clientX - startX; if (Math.abs(dx) > 40) goTo(current + (dx < 0 ? 1 : -1)); else goTo(current); });
+            track.addEventListener('mouseleave', e => { if (!dragging) return; dragging = false; track.style.transition = ''; goTo(current); });
+            track.addEventListener('touchstart', e => { startX = e.touches[0].clientX; }, { passive: true });
+            track.addEventListener('touchend',   e => { const dx = e.changedTouches[0].clientX - startX; if (Math.abs(dx) > 40) goTo(current + (dx < 0 ? 1 : -1)); });
+
+            goTo(0);
+        })();
+        </script>
+    </div>
+    END ABLATION SECTION -->
+
+
+    <div class="container blog main">
+        <h2>Qualitative Examples</h2>
+        <p class="text">
+            Representative examples of EchoSafe's responses on MM-SafetyBench++, demonstrating contextually appropriate refusals on unsafe queries and helpful answers on safe counterparts.
+        </p>
+    </div>
+
+    <div class="container blog extra-large gray">
+        <style>#qaCarousel .bm-slide { flex: 0 0 30%; }</style>
+        <div class="bm-carousel" id="qaCarousel">
+            <div class="bm-track" id="qaTrack">
+                <div class="bm-slide active"><img src="assets/figures/example_w_ans(1).png"></div>
+                <div class="bm-slide"><img src="assets/figures/example_w_ans(2).png"></div>
+                <div class="bm-slide"><img src="assets/figures/example_w_ans(3).png"></div>
+                <div class="bm-slide"><img src="assets/figures/example_w_ans(4).png"></div>
+            </div>
+            <div class="slide-menu">
+                <ul class="dots" id="qaDots">
+                    <li class="dot active" data-index="0"></li>
+                    <li class="dot" data-index="1"></li>
+                    <li class="dot" data-index="2"></li>
+                    <li class="dot" data-index="3"></li>
+                </ul>
+            </div>
+        </div>
+
+        <p class="caption" style="font-size: 90%;">
+            <strong>Qualitative Examples.</strong> EchoSafe produces contextually appropriate responses by leveraging self-reflective memory. Click the dots or drag to explore.
+        </p>
+
+        <script>
+        (function () {
+            const carousel = document.getElementById('qaCarousel');
+            const track    = document.getElementById('qaTrack');
+            const slides   = Array.from(track.querySelectorAll('.bm-slide'));
+            const dots     = Array.from(document.getElementById('qaDots').querySelectorAll('.dot'));
+            let current = 0;
+
+            function goTo(index) {
+                current = Math.max(0, Math.min(slides.length - 1, index));
+                const wrapperW = carousel.offsetWidth;
+                const slideW   = slides[0].offsetWidth;
+                const gap      = (wrapperW - slideW) / 2;
+                track.style.transform = `translateX(${gap - current * (slideW + wrapperW * 0.03)}px)`;
+                slides.forEach((s, i) => s.classList.toggle('active', i === current));
+                dots.forEach((d, i)   => d.classList.toggle('active', i === current));
+            }
+
+            dots.forEach(d => d.addEventListener('click', () => goTo(+d.dataset.index)));
+            slides.forEach((s, i) => s.addEventListener('click', () => { if (i !== current) goTo(i); }));
+            window.addEventListener('resize', () => goTo(current));
+
+            let startX = 0, dragging = false;
+            track.addEventListener('mousedown',  e => { dragging = true; startX = e.clientX; track.style.transition = 'none'; });
+            track.addEventListener('mousemove',  e => { if (!dragging) return; e.preventDefault(); });
+            track.addEventListener('mouseup',    e => { if (!dragging) return; dragging = false; track.style.transition = ''; const dx = e.clientX - startX; if (Math.abs(dx) > 40) goTo(current + (dx < 0 ? 1 : -1)); else goTo(current); });
+            track.addEventListener('mouseleave', e => { if (!dragging) return; dragging = false; track.style.transition = ''; goTo(current); });
+            track.addEventListener('touchstart', e => { startX = e.touches[0].clientX; }, { passive: true });
+            track.addEventListener('touchend',   e => { const dx = e.changedTouches[0].clientX - startX; if (Math.abs(dx) > 40) goTo(current + (dx < 0 ? 1 : -1)); });
+
+            goTo(0);
+        })();
+        </script>
+    </div>
+
+
+    <div class="container blog main">
+        <h1>Citation</h1>
+        <p class="text">
+            If you find our work useful, please consider citing:
+        </p>
+<pre><code class="plaintext">@inproceedings{echosafe2026,
+    title     = {Evolving Contextual Safety in Multi-Modal Large Language Models via
+                 Inference-Time Self-Reflective Memory},
+    author    = {Author One and Author Two and Author Three and Author Four and Author Five},
+    booktitle = {Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition (CVPR)},
+    year      = {2026}
+}</code></pre>
+    </div>
+
+
+    <!-- Footer -->
+    <footer>
+        <div class="container">
+            <p>
+                This website is built on the <a href="https://shikun.io/projects/clarity">Clarity Template</a>, designed by <a href="https://shikun.io/">Shikun Liu</a>.
+            </p>
+        </div>
+    </footer>
+
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.18.1/highlight.min.js"></script>
+    <script>hljs.initHighlightingOnLoad();</script>
+    <script src="clarity/clarity.js"></script>
+    <script src="assets/scripts/main.js"></script>
+</body>
+</html>
